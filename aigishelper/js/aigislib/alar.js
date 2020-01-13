@@ -65,6 +65,7 @@ aigislib.ALAR = (function() {
 		}
 		
 		async patch(context) {
+			throw new Error("ALAR patching not implemented");
 			const alar = this.clone();
 			const promises = [];
 			
