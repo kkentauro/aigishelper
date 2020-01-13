@@ -123,7 +123,7 @@ chrome.extension.onMessage.addListener(function(msg) {
 document.addEventListener("aigishelper.http.response", function(event) {
 	let data = {action: "data", detail: event.detail};
 	
-	let id = "jnppndepmbnklbcjogdccajojliggcbe";
+	let id = "hablplgjfbcgjdnhohdkpjfdkcnagkkb";
 	let port = chrome.runtime.connect(id, {name: "aigishelper"});
 	
 	port.postMessage(data);
@@ -131,7 +131,7 @@ document.addEventListener("aigishelper.http.response", function(event) {
 
 (function() {
 	let data = {action: "init"};
-	let id = "jnppndepmbnklbcjogdccajojliggcbe";
+	let id = "hablplgjfbcgjdnhohdkpjfdkcnagkkb";
 	let port = chrome.runtime.connect(id, {name: "aigishelper"});
 	
 	port.postMessage(data);
