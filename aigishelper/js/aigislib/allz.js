@@ -46,6 +46,7 @@ aigislib.ALLZ = class extends aigislib.ALObject {
 	
 	constructor() {
 		super();
+		this.data = new DataView(new ArrayBuffer());
 	}
 	
 	static parse(stream) {
@@ -136,11 +137,30 @@ aigislib.ALLZ = class extends aigislib.ALObject {
 	}
 	
 	write_to_stream(stream) {
+		const header_size = 12;
+		const data_size = this.data.buffer.byteLength;
+		const numbits = Math.ceil(Math.log2(data_size));
+		const numbytes = Math.ceil(numbits / 8);
+		const total_allz_size = header_size + numbytes + data_size;
+		assert(numbits < 32);
+		
+		stream.writeString("ALLZ");
+		stream.writeUint8 (1); // version
+		stream.writeUint8 (0); // control length
+		stream.writeUint8 (0); // control offset
+		stream.writeUint8 (0); // control literal
+		stream.writeUint32(total_allz_size); // data stream size
+		stream.writeBlock(this.data);
 	}
 	
-	patch() {
+	static make_allz(view) {
+		const allz = new aigislib.ALLZ();
+		allz.data = view;
+		return allz;
+	}
+	
+	async patch() {
 		throw "should not be trying to patch this (ALLZ)";
 	}
 	
 }
-

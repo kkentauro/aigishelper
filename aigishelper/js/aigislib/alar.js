@@ -13,7 +13,7 @@ aigislib.ALAR = (function() {
 			this.index = 0;
 			this.address = 0;
 			this.size = 0;
-			this.alobj = null;
+			this.alobj = new aigislib.ALObject();
 		}
 		
 		clone() {
@@ -64,16 +64,29 @@ aigislib.ALAR = (function() {
 			throw "write_to_stream not implemented for ALAR";
 		}
 		
-		patch(context) {
-			let alar = this.clone();
+		async patch(context) {
+			const alar = this.clone();
+			const promises = [];
 			
 			for(let entry of alar.entries) {
-				aigishelper.make_patch_context(context.root, entry.filename)
-					.then(child_context => entry.alobj.patch(child_context));
+				const new_context_promise = aigishelper.make_patch_context(
+					context.root, entry.filename);
+				const patch_promise = new_context_promise
+					.then(child_context => entry.alobj.patch(child_context))
+				
+				promises.push(patch_promise);
+			}
+			
+			const patched_children = await Promise.all(promises);
+			assert(patched_children.length == alar.entries.length);
+			
+			for(let i = 0; i < alar.entries.length; i++) {
+				alar.entries[i].alobj = patched_children[i];
 			}
 			
 			return alar;
-		}		
+		}
+		
 	}
 	
 	// ===================================================================
@@ -108,23 +121,6 @@ aigislib.ALAR = (function() {
 		}
 	}
 	
-	function write_data(stream, alar) {
-		for(let entry of alar.entries) {
-			let match = entry.filename.match(/\.(?<ext>[^\.]*)$/);
-			let extension = match.groups["ext"];
-			
-			if(extension == "txt" || extension == "lua") {
-				throw "lazy, didn't implement writing txt yet";
-			} else {
-				let position = stream.position;
-
-				stream.jumpTo(entry.address);
-				stream.writeALObject(entry.alobj);
-				stream.jumpTo(position);
-			}
-		}
-	}
-	
 	// ===================================================================
 	
 	let ALARv2 = (function() {
@@ -153,9 +149,11 @@ aigislib.ALAR = (function() {
 			static parse(stream) {
 				let alar = new ALARv2();
 				
-				stream.seek(+6); // ???
+				stream.seek(+5);
+				this.unk1 = stream.readUint8();
 				let record_count = stream.readUint16();
-				stream.seek(+8); // ???
+				this.unk2 = stream.readUint32();
+				this.unk3 = stream.readUint32();
 				
 				for(let i = 0; i < record_count; i++) {
 					alar.entries.push(parse_toc_entry(stream));
@@ -168,29 +166,41 @@ aigislib.ALAR = (function() {
 			write_to_stream(stream) {
 				stream.writeString("ALAR");
 				stream.writeUint8 (2);
-				stream.writeString("\0");
+				stream.writeUint8 (this.unk1);
 				stream.writeUint16(this.entries.length);
-				stream.writeString("\0\0\0\0\0\0\0\0");
+				stream.writeUint32(this.unk2);
+				stream.writeUint32(this.unk3);
 				
-				let first_entry = 0;
-				for(let entry of this.entries) {
-					stream.writeUint16(entry.index);
-					stream.writeString("\0\0");
-					stream.writeUint32(entry.address);
-					stream.writeUint32(entry.size);
-					stream.writeString("\0\0\0\0");
+				const header_size = 16;
+				const filename_size = 36;
+				let header_position = stream.position;
+				let data_position = header_position + (this.entries.length * header_size);
+				stream.jumpTo(data_position);
+				
+				for(let i = 0; i < this.entries.length; i++) {
+					const entry = this.entries[i];
 					
-					let offset = stream.start_offset + entry.address - 0x22;
-					first_entry = first_entry || offset;
-					stream.writeStringAtPosition(offset, entry.filename);
-					stream.writeUint8AtPosition(offset + entry.filename.length, 0);
+					stream.writeString("\0\0" + entry.filename);
+					stream.pad(filename_size - (entry.filename.length + 2));
+					
+					const entry_start = stream.position;
+					stream.writeALObject(entry.alobj);
+					stream.align(4);
+					
+					const entry_size = stream.position - entry_start;
+					data_position = stream.position;
+					
+					stream.jumpTo(header_position);
+					stream.writeUint16(i);
+					stream.writeString("\0\0");
+					stream.writeUint32(entry_start);
+					stream.writeUint32(entry_size);
+					stream.writeString("\0\0\0\0");
+					header_position += header_size;
+					
+					stream.jumpTo(data_position);
 				}
 				
-				while(stream.position < first_entry) {
-					stream.writeUint8(0);
-				}
-				
-				write_data(stream, this);
 			}
 			
 			patch(context) {
@@ -234,8 +244,8 @@ aigislib.ALAR = (function() {
 				stream.seek(+6); // ???
 				let record_count = stream.readUint16();
 				
-				this.unk0 = stream.readUint16(); // ???
-				this.unk1 = stream.readUint16(); // ???
+				this.unk0 = stream.readUint16();
+				this.unk1 = stream.readUint16();
 				stream.seek(+4); // ???
 				
 				this.data_offset = stream.readUint16();
@@ -283,10 +293,9 @@ aigislib.ALAR = (function() {
 					stream.writeString("\0\0\0\0");
 				}
 				
-				write_data(stream, this);
 			}
 			
-			patch(context) {
+			async patch(context) {
 				return super.patch(context);
 			}
 			

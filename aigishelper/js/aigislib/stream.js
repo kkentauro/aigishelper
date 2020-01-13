@@ -52,25 +52,26 @@ aigislib.BinaryStreamWriter = class {
 		return view.byteLength;
 	}
 	
-	
-	writeString(str, maxlength) {
-		let written = this.writeStringAtPosition(this.position, str, maxlength);
-		this.seek(+written);
-		return written;
+	pad(num) {
+		for(let _ = 0; _ < num; _++) {
+			this.writeUint8(0);
+		}
 	}
 	
-	writeStringAtPosition(position, str, maxlength) {
-		let size = Math.min(maxlength || 0xffff, str.length);
-		let view = new DataView(new ArrayBuffer(size));
+	writeString(str) {
+		this.writeStringAtPosition(this.position, str);
+		this.seek(+str.length);
+	}
+	
+	writeStringAtPosition(position, str) {
+		let view = new DataView(new ArrayBuffer(str.length));
 		
 		for(let i = 0; i < view.byteLength; i++) {
 			view.setUint8(i, str.charCodeAt(i));
 		}
 		
 		this.writeBlockAtPosition(position, view);
-		return size;
 	}
-	
 	
 	writeUint8(val) {
 		this.writeUint8AtPosition(this.position, val);
@@ -103,6 +104,18 @@ aigislib.BinaryStreamWriter = class {
 	writeInt32(val) {
 		let view = new DataView(new ArrayBuffer(4));
 		view.setInt32(0, val, true);
+		this.writeBlock(view);
+	}
+	
+	writeBigUint64(val) {
+		let view = new DataView(new ArrayBuffer(8));
+		view.setBigUint64(0, val, true);
+		this.writeBlock(view);
+	}
+	
+	writeBigInt64(val) {
+		let view = new DataView(new ArrayBuffer(8));
+		view.setBigInt64(0, val, true);
 		this.writeBlock(view);
 	}
 	
@@ -151,6 +164,18 @@ aigislib.BinaryStreamWriter = class {
 		this.writeBlockAtPosition(position, view);
 	}
 	
+	writeBigUint64AtPosition(position, val) {
+		let view = new DataView(new ArrayBuffer(8));
+		view.setBigUint64(0, val, true);
+		this.writeBlockAtPosition(position, view);
+	}
+	
+	writeBigInt64AtPosition(position, val) {
+		let view = new DataView(new ArrayBuffer(8));
+		view.setBigInt64(0, val, true);
+		this.writeBlockAtPosition(position, view);
+	}
+	
 	writeFloat32AtPosition(position, val) {
 		let view = new DataView(new ArrayBuffer(4));
 		view.setFloat32(0, val, true);
@@ -167,7 +192,7 @@ aigislib.BinaryStreamWriter = class {
 		let view = new DataView(new ArrayBuffer(this.data.length));
 		
 		for(let i = 0; i < this.data.length; i++) {
-			assert(i in this.data); // sparse array should be completely filled
+			assert(i in this.data, "sparse array not completely filled");
 			view.setUint8(i, this.data[i]);
 		}
 		
@@ -356,6 +381,20 @@ aigislib.BinaryStreamReader = class {
 		return val;
 	}
 	
+	readBigUint64() {
+		const val = this.readBigUint64FromPosition(this.position, true);
+		
+		this.seek(+8);
+		return val;
+	}
+	
+	readBigInt64() {
+		const val = this.readBigInt64FromPosition(this.position, true);
+		
+		this.seek(+8);
+		return val;
+	}
+	
 	readFloat32() {
 		const val = this.readFloat32FromPosition(this.position, true);
 		
@@ -392,6 +431,14 @@ aigislib.BinaryStreamReader = class {
 	
 	readInt32FromPosition(position, littleEndian) {
 		return this.data.getInt32(position, littleEndian || true);
+	}
+	
+	readBigUint64FromPosition(position, littleEndian) {
+		return this.data.getBigUint64(position, littleEndian || true);
+	}
+	
+	readBigInt64FromPosition(position, littleEndian) {
+		return this.data.getBigInt64(position, littleEndian || true);
 	}
 	
 	readFloat32FromPosition(position, littleEndian) {

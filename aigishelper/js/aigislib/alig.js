@@ -18,7 +18,7 @@ aigislib.ALIG = class extends aigislib.ALObject {
 	write_to_stream(stream) {
 	}
 	
-	patch() {
+	async patch() {
 	}
 }	
 

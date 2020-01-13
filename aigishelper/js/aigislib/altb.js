@@ -147,17 +147,17 @@ aigislib.ALTB = class extends aigislib.ALObject {
 						
 						if(altb.strings_start) {
 							let str = stream.readNullTerminatedStringFromPosition(altb.strings_start + val);
-							if(str.length != 0) { // TODO: can this happen??
+							if(str.length > 0) {
 								altb.strings.push(str);
 							}
 						}
-						
 						break;
-					case 9: // StartDateTime????
+					case 9: // StartDateTime?
+						entry.push(stream.readBigInt64FromPosition(offset));
+						break;
 					case 97: // ability link?
 						break;
 					default:
-						debugger;
 						throw new Error("unknown record type" + attr.type);
 				}
 				
@@ -249,8 +249,13 @@ aigislib.ALTB = class extends aigislib.ALObject {
 			write_header(this, stream);
 			
 			for(let entry of this.entries) {
+				const entry_start = stream.position;
+				
 				for(let i = 0; i < this.header.entries.length; i++) {
-					let attr = this.header.entries[i];
+					const attr = this.header.entries[i];
+					const padding = entry_start + attr.offset - stream.position;
+					assert(padding >= 0, "stream ahead of where it should be");
+					stream.pad(padding);
 					
 					switch(attr.type) {
 						case 1:
@@ -263,7 +268,9 @@ aigislib.ALTB = class extends aigislib.ALObject {
 						case 5:
 							stream.writeUint8(entry[i]);
 							break;
-						case 9: // StartDateTime???
+						case 9: // StartDateTime
+							stream.writeBigInt64(entry[i]);
+							break;
 						case 97: // ????
 							break;
 						default:
@@ -280,9 +287,10 @@ aigislib.ALTB = class extends aigislib.ALObject {
 		return write_to_stream;
 	})();
 	
-	patch(context) {
+	async patch(context) {
 		let altb = new aigislib.ALTB();
 		
+		// some of this may change if the header changes?
 		altb.header        = this.header.clone();
 		altb.version       = this.version;
 		altb.form          = this.form;

@@ -80,7 +80,8 @@ aigislib.ALRD = (function() {
 			return alrd;
 		}
 		
-		patch(context) {
+		async patch(context) {
+			return this.clone();
 		}
 		
 		static parse(stream) {
@@ -118,7 +119,7 @@ aigislib.ALRD = (function() {
 			stream.writeUint16(1); // version?
 			stream.writeUint8 (this.entries.length);
 			stream.writeUint8 (0); // ??
-			stream.writeUint16(this.entries.length * 4);
+			stream.writeUint16(this.size);
 			
 			// write entries
 			for(let entry of this.entries) {
