@@ -86,7 +86,7 @@ aigishelper.process_response = (function() {
 			const al_object = aigislib.parse_object(input_stream);
 			const output_stream = new aigislib.BinaryStreamWriter();
 			const context = await aigishelper.make_patch_context(aigishelper.patch_zip, filename);
-			const patched_object = al_object.patch(context, filename);
+			const patched_object = await al_object.patch(context, filename);
 			
 			aigishelper.patched_files[filename] = patched_object;
 			output_stream.writeALObject(patched_object);
