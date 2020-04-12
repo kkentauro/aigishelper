@@ -1,6 +1,6 @@
 {
 	"name": "Aigis Helper",
-	"version": "0.1.4",
+	"version": "0.1.4.1",
 	"description": "Aigis Helper",
 	
 	"background": {
@@ -25,7 +25,9 @@
 		"*://*.dmm.com/*",
 		"*://*.dmm.co.jp/*",
 		"*://*.millennium-war.net/*",
-		"storage"
+		"file://*",
+		"storage",
+		"unlimitedStorage"
 	],
 	
 	"content_scripts": [
